@@ -73,3 +73,57 @@ Get data from the closest machine → data center topology
 * Explain how topology affects replica statement
 * What is a chunk/block size of data and how does it help to balance cluster loads
 * Explain how HDFS client reads and writes data
+
+## Block and Replica States, Recovery Process
+
+![test](/Images/1_Big_Data_Essentials/Week_1/Replica.png)
+
+![test](/Images/1_Big_Data_Essentials/Week_1/Sim_Replica_1.png)
+
+![test](/Images/1_Big_Data_Essentials/Week_1/Sim_Replica_2.png)
+
+![test](/Images/1_Big_Data_Essentials/Week_1/Sim_Replica_3.png)
+
+#### TODO: Add information here
+
+#### Questions:
+Q: Could we have “finalized” replicas with different visible lengths or generation stamps?
+
+A: No. For finalized replicas you have a guarantee that all of them have the same GS number and visible lengths.
+
+#### Block Recovery
+![test](/Images/1_Big_Data_Essentials/Week_1/Block_recov.png)
+
+#### Lease Recovery
+![test](/Images/1_Big_Data_Essentials/Week_1/Lease_recov_1.png)
+
+![test](/Images/1_Big_Data_Essentials/Week_1/Lease_recov_2.png)
+
+#### Pipeline Recovery
+![test](/Images/1_Big_Data_Essentials/Week_1/Pipeline_recov_1.png)
+
+What is a replica’s state in this case? - RBW: If there are no failures, then it is an RBW replicas state (the process is already started, but not finalized, so other options are not possible).
+
+![test](/Images/1_Big_Data_Essentials/Week_1/Pipeline_recov_1.png)
+
+#### Summary
+
+* You can draw State block and replica transition tables (You should know the state transition table for a replica on a datanode and state transition table for a block on a namenode)
+* You should be able to explain write pipeline behaviour, associated staged and recovery problems
+* You should know four recovery processes and how they are related to each other (lease recovery → block recovery → replica recovery; pipeline recovery)
+
+#### Questions:
+
+* Q: Is it possible for a replica to transition from the Temporary to RUR state?
+* A: No - During failures “temporary” replicas are just removed
+
+* Q: Please specify all the possible ways to transition a replica from RWR to Finalized state
+* A:
+    * RWR → RUR → Finalized (It is not possible to jump between states with no connections (RWR → Finalized) but it is possible to transition via backward connections. Th right (simplified) diagram shwos the common transition workflow for a replica, whereas the left (detailed) diagram shows all the possible scenarious
+    * RWR → RBW → Finalized
+    * RWR → RBW → RUR → Finalized
+
+* Q: Is it possible to transition a replica from RWR replica’s state to under_recovery?
+* A: No - It is not as RWR is a replica’s state when “under_recovery” is a block’s state
+
+## HDFS Client
