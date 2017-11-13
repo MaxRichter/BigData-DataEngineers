@@ -5,3 +5,7 @@
 ![test](/home/max/PycharmProjects/BigData-DataEngineers/Images/1_Big_Data_Essentials/Week_1/kk.jpg)
 
 ![test](../BigData-DataEngineers/Images/1_Big_Data_Essentials/Week_1/kk.jpg)
+![test](../Images/1_Big_Data_Essentials/Week_1/kk.jpg)
+![test](./Images/1_Big_Data_Essentials/Week_1/kk.jpg)
+![test](/Images/1_Big_Data_Essentials/Week_1/kk.jpg)
+![test](Images/1_Big_Data_Essentials/Week_1/kk.jpg)
