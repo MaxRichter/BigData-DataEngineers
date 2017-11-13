@@ -104,7 +104,7 @@ A: No. For finalized replicas you have a guarantee that all of them have the sam
 
 What is a replica’s state in this case? - RBW: If there are no failures, then it is an RBW replicas state (the process is already started, but not finalized, so other options are not possible).
 
-![test](/Images/1_Big_Data_Essentials/Week_1/Pipeline_recov_1.png)
+![test](/Images/1_Big_Data_Essentials/Week_1/Pipeline_recov_2.png)
 
 #### Summary
 
