@@ -76,15 +76,94 @@ Get data from the closest machine → data center topology
 
 ## Block and Replica States, Recovery Process
 
+#### Block and Replica
 ![test](/Images/1_Big_Data_Essentials/Week_1/Replica.png)
+
+* Replica is a physical data storage on a data node. 
+There are usually several replicas with the same content on different data nodes. 
+* Block is a meta-information storage on a name node and provides information about 
+replica's locations and their states. 
+* Both replica and block have their own states. 
+
+### Datanode replica's states
 
 ![test](/Images/1_Big_Data_Essentials/Week_1/Sim_Replica_1.png)
 
+#### Finalized
+* If replica is in a finalized state then it means that the content of this replica is frozen. 
+* The latter means that meta-information for this block on name node is aligned with all the corresponding replica's states and data. 
+    * For instance you can safely read data from any data node and you will get exactly the same content. 
+    * This property preserves read consistency.
+* Each block of data has a version number called Generation Stamp or GS. 
+For finalized replicas, you have a guarantee that all of them have the same GS 
+number which can only increase over time. 
+It happens during error recovery process or during data appending to a block.
+
+#### Replica being written (RBW)
+* It is the state of the last block of an open file or a file which was reopened for appending. 
+* During this state different data nodes can return to use a different set of bytes. In short, bytes that are acknowledged by the downstream data nodes in a pipeline are visible for a reader of this replica. 
+* Moreover, data node on disk data and name node meta-information may not match during this state. 
+    * In case of any failure data node will try to preserve as many bytes as possible. 
+    * It is a design goal called data durability.
+
+#### Replica Waiting to be Recovered (RWR)
+* Is a state of all being written replicas after data node failure and recovery. 
+    * For instance, after a system reboot or after a BSOD, which are quite likely from a programming point of view. 
+* RWR replicas will not be in any data node pipeline and therefore will not receive any new data packets. 
+* So they either become outdated and should be discarded, or they will participate in a special recovery process called a lease recovery if the client also dies.
+
+#### Replica Under Recovery (RUR)
+* In case of HDFS client lease expiration, replica transition to a RUR state. 
+* Lease expiration usually happens during the client's site failure. 
+As data grows and different nodes are added or removed from a cluster, data can become unevenly distributed over the cluster nodes. 
+* A Hadoop administrator can spawn a process of data rebalancing or a data engineer can request increasing of the replication factor of data for the sake of durability. 
+
+#### Temporary
+* In these cases new generated replicas will be in a state called temporary. 
+* It is pretty much the same state as RBW except the fact that this data is not visible to user unless finalized. 
+* In case of failure, the whole chunk of data is removed without any intermediate recovery state.
+
+### Namenode replica's states
+
 ![test](/Images/1_Big_Data_Essentials/Week_1/Sim_Replica_2.png)
+
+* In addition to the replica transition table, a name node block has its own collection of states and transitions. 
+* Different from data node replica states, a block state is stored in memory, it doesn't persist on any disk. 
 
 ![test](/Images/1_Big_Data_Essentials/Week_1/Sim_Replica_3.png)
 
-#### TODO: Add information here
+#### Under Construction
+* As soon as a user opens a file for writing, name node creates the corresponding block with the under_construction state. 
+* When a user opens a file for append name node also transition this block to the state under_construction. 
+* It is always the last block of a file, it's length and generation stamp are mutable. 
+* Name node block keeps track of right pipeline. 
+    * It means that it contains information about all RBW and RWR replicas. 
+    * It is quite vindictive and watches every step.
+
+#### Under Recovery
+* Replicas transitions from RWR to recovery RUR state when the client dies. 
+* Even more generally it happens when a client's lease expires. 
+* Consequently, the corresponding block transitions from under_construction to under_recovery state.
+
+#### Committed
+* The under_construction block transitions to a committed state when a client successfully requests name node to close a file or to create a new consecutive block of data. 
+* The committed state means that there are already some finalized replicas but not all of them. 
+* For this reason in order to serve a read request, the committed block needs to keep track of RBW replicas, until all the replicas are transitioned to the finalized state and HDFS client will be able to close the file. 
+* It has to retry it's requests.
+
+#### Complete
+* Final complete state of a block is a state where all the replicas are in the finalized state and therefore they have identical visible length and generation stamps. 
+* Only when all the blocks of a file are complete the file can be closed. 
+* In case of name node restart, it has to restore the open file state. 
+* All the blocks of the un-closed file are loaded as complete except the last block which is loaded as under_construction.
+
+#### Recovery procedures
+* Then recovery procedures will start to work. 
+* There are several types of them:
+    * replica recovery
+    * block recovery
+    * lease recovery
+    * pipeline recovery
 
 #### Questions:
 Q: Could we have “finalized” replicas with different visible lengths or generation stamps?
@@ -94,17 +173,80 @@ A: No. For finalized replicas you have a guarantee that all of them have the sam
 #### Block Recovery
 ![test](/Images/1_Big_Data_Essentials/Week_1/Block_recov.png)
 
+* During the block recovery process, namenode has to ensure that all of the corresponding replicas of a block will transition to a common state, logically and physically. 
+* By physically, I mean that all the corresponding replicas should have the same disk content. 
+* Namenode choses a primary datanode called PD in a designed document. 
+    * Obviously PD should contain a replica for the target block. 
+    * PD request from a namenode and new generation stamp, information and location of other replicas for recovery process. 
+    * PD contacts each relevant datanode to participate in the replica recovery process.
+    * Replica recovery process includes aborting active clients writing to a replica. 
+    * Aborting the previous replica or block recovery process, and participating in final replica size agreement process. 
+    * During this phase, all the necessary information or data is propagated through the pipelines. 
+    * As the last step, PD notifies namenode about the result, success or failure. 
+    * In case of failure, namenode could retry block recovery process. 
+
 #### Lease Recovery
 ![test](/Images/1_Big_Data_Essentials/Week_1/Lease_recov_1.png)
 
+* Block recovery process could happen only as a part of a lease recovery process. 
+* Lease manager manages all the leases at the namenode. 
+* HDFS clients request a lease every time they would like to write or append to a file. 
+* Lease manager maintains a soft and a hard limit. 
+    * If a current lease holder doesn't renew its lease during the soft limit timeout, then another client will be able to take over this lease. 
+    * In this case and in this case of reaching a hard limit, the process of lease recovery will begin. 
+    * This process is necessary to close open files for the sake of the client. 
+    * During this process there are several guarantees to be achieved. 
+        * The first one is concurrency control, even if the client is alive it won't be able to write data to a file. 
+        * The second one is consistency guarantee. All replicas should draw back to a consistent state to have the same on this data and generations temp
+
 ![test](/Images/1_Big_Data_Essentials/Week_1/Lease_recov_2.png)
+
+* Lease recovery starts with lease renew
+* Of course, new files lease holder should have superpower includes ability to take ownership of any other user's lease. 
+* In our case, the name of the superuser is dfs. 
+* Therefore, all of the other clients requests such as get new generation stamp, get new block, close file from other clients to this path will be rejected. 
+* Namenode gets the list of datanodes which contain the last block of a file, assigns a primary datanode and starts a block recovery process. 
+* As soon as block recovery process finishes, namenode is notified by PD about the outcome. 
+* Updates block in for and removes the list from the file. 
 
 #### Pipeline Recovery
 ![test](/Images/1_Big_Data_Essentials/Week_1/Pipeline_recov_1.png)
 
-What is a replica’s state in this case? - RBW: If there are no failures, then it is an RBW replicas state (the process is already started, but not finalized, so other options are not possible).
+* When you write to an HDFS file, HDFS client writes data block by block. 
+* Each block is constructed through a write pipeline. 
+* HDFS client breaks down block into pieces called packets. 
+    * These packets are propagated to the datanodes through the pipeline. 
+    * As illustrated in this picture, there are always three stages 
+        * pipeline setup
+        * data streaming
+        * close 
+    * Both lines on this image represent data packets 
+    * Dotted lines represent acknowledgement messages
+    * Regular lines are used to represent control messages
+* During the pipeline's setup stage, the client sends a setup message down through the pipeline. 
+    * Each datanode opens a replica for writing and sends a message back upstream the pipeline. 
+* Data streaming stage is defined by time range from T1 to T2. Where T1 is the time when a client receives the acknowledgement method for a setup stage. And T2 is the time when a client receives the acknowledgement method for all the blog packets. 
+    * During the data streaming stage data is buffered on the client's site to form a packet, then propagated through the data pipeline. 
+    * Next packet can be sent even before the acknowledgement of the previous packet is received.
+
+Q: What is a replica’s state in this case? 
+
+A. RBW (If there are no failures, then it is an RBW replicas state (the process is already started, but not finalized, so other options are not possible))
 
 ![test](/Images/1_Big_Data_Essentials/Week_1/Pipeline_recov_2.png)
+
+* As you can spot into this image, there are some specific data packets called flash. 
+    * They are synchronous packet and used as a synchronization point for the datanode write pipeline. 
+* The final stage is close, which is used to finalize replicas, and shut down the pipeline. 
+    * All the datanodes in the pipeline change the replica states to the finalized. 
+    * Before they state to a namenode and send the acknowledgement method upstream. 
+    * In case of datanode pipeline recovery can be initiated during each of these stages. 
+    * If you are writing to a new file, and a failure happens during the setup stage. They easily abandoned datanode pipeline, and and request a new one from scratch. 
+    * If datanode is not able to continue process packets appropriately for instance, because of this problems. Then it alerts the datanode pipeline about it, by closing all the connections. 
+    * When HDFS client detects a failure, it stops sending new packets to the existing pipeline. Requests and new generations stemp from a namenode, and rebuilds a pipeline from good datanodes. 
+        * In this case, some packets can be resent, but there will not be extra disk IO overhead for datanodes that already saved these packets on disk. 
+    * All datanodes keep track of bytes received, bytes written to a disk, and bytes acknowledged. 
+    * Once the client detects a failure during close stage, it rebuilds a pipeline with good datanodes, bumps generations temp and requests to finalize replicas. 
 
 #### Summary
 
@@ -126,4 +268,12 @@ What is a replica’s state in this case? - RBW: If there are no failures, then 
 * Q: Is it possible to transition a replica from RWR replica’s state to under_recovery?
 * A: No - It is not as RWR is a replica’s state when “under_recovery” is a block’s state
 
-## HDFS Client
+### HDFS Client
+
+### Curl
+
+### Web UI, Rest API
+
+### Namenode Architecture
+
+### Quiz
