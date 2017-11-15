@@ -270,7 +270,76 @@ A. RBW (If there are no failures, then it is an RBW replicas state (the process 
 
 ### HDFS Client
 
+* General:
+    * `hdfs dfs -help`
+    * `hdfs dfs -usage <utility_name>`
+    * `hdfs namenode`
+    * `hdfs datanode`
+* List files:
+    * `hdfs dfs -ls -R -h /data/wiki`
+    * `hdfs dfs -du -h /data/wiki (summary of whole file system space usage)`
+* Create folder:
+    * `hdfs dfs -mkdir deep/nested/path --> (error)`
+    * `hdfs dfs -mkdir -p deep/nested/path`
+    * `hdfs dfs -ls -R deep`
+* Remove folder:
+    * `hdfs dfs -rm deep --> (error)`
+    * `hdfs dfs -rm -r deep`
+    * `hdfs dfs -mkdir -p /deep/nested/path && hdfs dfs -rm -r -skipTrash deep (deleted deep)`
+* Create empty file
+    * `hdfs dfs -touchz file.txt`
+    * `hdfs dfs -ls`
+* Move and delete file
+    * `hdfs dfs -mv file.txt another_file.txt && hdfs dfs -rm another_file.txt`
+* Put a local file to remote system:
+    * `hdfs dfs -put <source location> <HDFS destination>`
+* How to read the content of a remote file (mostly binary data)?
+    * `hdfs dfs -put test_file.txt hdfs_test_file.txt`
+    * `hdfs dfs -rm -skipTrash hdfs_test_file.txt (delete)`
+    * `hdfs dfs -cat hdfs_test_file.txt | head -4`
+    * `hdfs dfs -cat hdfs_test_file.txt | tail -4 (last 1kb of file - to reproduce locally: tail -c 1024 (byte)`
+* Get remote file to local system:
+    * `hdfs dfs -cp hdfs_test_file.txt hdfs_test_file_copy.txt`
+    * `hdfs dfs -get hdfs_test* (download)`
+    * `ls -lth hdfs*`
+    * `hdfs dfs -getmerge hdfs_test* hdfs_merged.txt (merge files)`
+    * `ls -lth hdfs*`
+    * `cat hdfs_merged.txt (locally)`
+* hdfs groups (get information about hdfs id)
+    * `time hdfs dfs -setrep -w 1 hdfs_test_file.txt (Decrease or increase replication factor)`
+    * `hdfs fsck /data/wiki/en_articles -files <-blocks> <-locations>`
+    *  (fsck = file system checking utility; you can request name node to provide you with the information about file blocks and the allocations)`
+    * `hdfs fsck -blockId blk_1073808569`
+    * You can get the information about file from block id. You only need to get rid of generation stamp as it is subject to change
+* Find function`
+    * `hdfs dfs -find /data/wiki -name ’’*part’’`
+    * `hdfs dfs -find /data/wiki -name ’’*part’’ -iname ’’*Article’’`
+
+#### Summary:
+* You can request meta-information from Namenode and chage its structure (ls, mkdir, rm, rm-r (-skipTrash), touch, mv)
+* You can read and write data from and to Datanodes in HDFS (put, cat, head, tail, get, getmerge)
+* You can change replication factor of files and get detailed information about data in HDFS (chown, hdfs groups; setrep; hdfs fsck; find)
+
+#### Questions:
+Q: Does “hdfs dfs -ls” count file size including the number of replicas?
+
+A: No - this command prints the file size without replicas
+
 ### Curl
+* curl is a tool to transfer data from or to a server, using one of the supported protocols (DICT, FILE, FTP, FTPS, GOPHER, HTTP, HTTPS, IMAP, IMAPS, LDAP, LDAPS, POP3, POP3S, RTMP, RTSP, SCP, SFTP, SMB, SMBS, SMTP, SMTPS, TELNET and TFTP)
+* The command is designed to work without user interference. Thus there is no need to open a browser, type urls and download them manually.
+* download one Website page
+    * $ curl https://www.wikipedia.org
+* download one Website page and save output to a file “wiki.html”
+    * $ curl https://www.wikipedia.org -o wiki.html
+* download several Website pages and save to the appropriate files
+    * $ curl https://www.wikipedia.org -o wiki.html https://www.coursera.org/ -o coursera.html
+* -i, --include
+    * Include the HTTP response headers in the output. The HTTP response headers can include things like server name, cookies, date of the document, HTTP version and more…
+    * curl -i http://www.google.com
+* -L, --location
+    * (HTTP) If the server reports that the requested page has moved to a different location (indicated with a Location: header and a 3XX response code), this option will make curl redo the request on the new place. If used together with -i, --include or -I, --head, headers from all requested pages will be shown.
+    * curl -L http://www.google.com
 
 ### Web UI, Rest API
 
