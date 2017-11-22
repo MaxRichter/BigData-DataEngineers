@@ -342,7 +342,103 @@ A: No - this command prints the file size without replicas
     * curl -L http://www.google.com
 
 ### Web UI, Rest API
+* Datanode information:
+    * http://namenode-server:50070/dfshealth.hmtl#tab-datanode
+    * Browse Directory
+* HDFS Federationv
+    * Huge cluster - distribute notes and meta information. With Fed there will be several name nodes - all of them independent from each other
+    * They won't require any coordination between them, and will store a part of a file system entry identified by Block Pool ID, by physical ability and reliability this way.
+    * Q: How is HDFS Federation scaled?
+    * A: horizontally (no coordination necessary between Namnenodes, so you do not need to provide performance host machines. It is called horizontal scaling (or “scale out”)
+* WebHDFS (Read-Write access)
+    * Read a file content:
+        * curl -i http://virtual-master.atp-fvt.org:50070/webhdfs (Request replica locations from name node) 
+        * curl -i http://virtual-node1.atp-fvt.org:50070/webhdfs (Get the file data from the provided HTTP location)
+        * curl -i -L http://virtual-node1.atp-fvt.org:50070/webhdfs (Get the file data from the provided HTTP location) (-L follow redirection)
+    * HTTP Get (namenode)
+        * Open - read data
+        * Getfilestatus - get file meta information
+        * Liststatus - list directory
+    * HTTP Put
+        * Create
+        * Mkdirs
+        * Rename
+        * Set replication
+    * HTTP Post (Transform - and add content)
+        * Append
+    * HTTP Delete
+        * Delete
+
+![webui_1](/Images/1_Big_Data_Essentials/Week_1/webui_1.png)
 
 ### Namenode Architecture
 
+* Namenode is a service responsible for keeping hierarchy of folders and files
+* Namenode stores all of this data in memory
+
+Collider Example:
+* 1 year of data ~ 10 PB
+* Storage: 10 PB / 2 TB * 3 ~ 15k (15,000 2TB hard drives to buy) - Storage for data nodes (Replication factor of 3)
+* RAM: 10 Pb / (128 Mb * 3) * 150 = 3,906,250,000 ~= 3.9Gb (because the level of granularity on the namenode is block, not replica) 
+    * On average, the typical size of objects, such as folder file or block, is around 150 bytes
+    * 128 Mb = default block size. When you read a block of data from a hard drive, first you need to locate on a disk (seek). Reading speed of 3.5GB/sec → 128Mb : 30-40ms. Typical drive seek time is less than one percent overhead for reading the random block of data from a hard drive and keeping block size small at the same time.
+    * The more files you have in a distributed storage, the more load you have on a namenode. This load does not depend on the file size, as you have approx. the same amount of meta information stored in RAM → Small files problem
+* Namenode is a single point of failure - if the service goes down, the HDFS storage became unavailable for read-only operations
+    * WAL (Write ahead logging) helps you to persist changes into the storage before applying them - edit log
+    * NFS (Network file system) helps you to overcome node crashes so you will be able to restore changes from a remote storage
+    * Edit log is not enough to reproduce Namenode state. You should have a snapshot of memory at some point in time from which you can replay transaction stored in the edit log.
+
+![namenode_1](/Images/1_Big_Data_Essentials/Week_1/namenode_1.png)
+
+![namenode_2](/Images/1_Big_Data_Essentials/Week_1/namenode_2.png)
+
+Secondary namenode or checkpoint namenode compacts the edit log by creating a new fsimage.
+
+New fsimage is made of all the fsimage by applying all stored transaction in edit log. It is a robust and and asynchronous process.
+
+![namenode_3](/Images/1_Big_Data_Essentials/Week_1/namenode_3.png)
+
+#### Summary
+* You can explain and reason about HDFS Namenode architecture (RAM; fsimage + edit log; block size)
+* You can estimate required resources for a Hadoop cluster
+* You can explain what small files problem is and where a bottleneck it
+* You can list differentes between different types of Namenodes (Secondary / Checkpoint / Backup)
+
+* Q: Please mark which of the following statements are true:
+* A: Secondary Namenode == Checkpoint Namenode
+
 ### Quiz
+1) What fact is more relevant to the horizontal scaling of the filesystems than to the vertical scaling?
+    * A simple structure
+    * **Usage of commodity hardware**
+    * It provides a lower latency than the other type of scaling
+2) The operation 'modify' files is not allowed in distributed FS (GFS, HDFS). What was NOT a reason to do it?
+    * **Increasing reliability and accessibility**
+    * Simplification of the DFS implementation
+    * The data usage pattern ‘write once, read many’
+3) How to achieve uniform data distribution across the servers in DFS?
+    * By replication
+    * By forbidding the operation 'modify' files
+    * **By splitting files into blocks**
+4) What does a metadata DB contain?
+    * **File permissions**
+    * **File creation time**
+    * File content
+    * **Location on the file blocks**
+5) Select the correct statement about HDFS:
+    * **A client requires access to all the servers to read files**
+    * All the servers are equal
+    * A client reads blocks of the file from a random server
+6) If you have a very important file, what is the best way to protect it in HDFS?
+    * Increase the replication factor for this file
+    * Restrict permissions to this file
+    * **Both ways are allowed and implemented in HDFS**
+7) You were told that two servers in HDFS were down: Datanode and Namenode, your reaction:
+    * It’s OK, replication factor is 3
+    * OMG, we’ve lost everything!
+    * Restore Datanode first
+    * **Restore Namenode first (Is master server)**
+8) What the block size in HDFS does NOT depend on?
+    * Namenode RAM
+    * **The block size on the local Datanodes filesystem**
+    * Ratio of the block seeking time to the block reading time
