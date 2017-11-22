@@ -170,7 +170,7 @@ In this slide you can see the output of these MapReduce application which valida
 
 In addition to the unnecessary memory consumption there would be an even lot on the reducers. 
 You know that there are some words which occur far more frequently than others. 
-For instance, one of the most popular words in the English language, is an article, The. 
+For instance, one of the most popular words in the English language, is an article, "The". 
 
 The benefit of MapReduce that it provides functionality to particularized work. 
 In a default scenario you will have the far more load on the reducer that will be busy processing this article "The". 
@@ -379,3 +379,92 @@ Henceforth, you know how to tune your MapReduce application, and what compressio
 ![compression_5](/Images/1_Big_Data_Essentials/Week_2/compression_5.png)
 
 ### Quiz
+
+1) Select the facts about a combiner:
+* It can significantly speed up the MapReduce job - True
+* Can be implemented in any language and specified in a ‘-combiner’ option in Hadoop Streaming command - True
+* It can be the same as a reducer in special cases - True
+* An output format is not required to be the same as an input format
+* It is run exactly once after a mapper
+2) How can a partitioner be implemented and what should be specified in ‘-partitioner’ option in a Hadoop Streaming command?
+* In any programming language; specify a partitioner command in a ‘-partitioner’ option
+* Only in Java; specify java class in -partitions option - True
+3) Select the correct statements about a partitioner:
+* It is used to calculate a reducer index for each (key, value) pair - True
+* Can be a non-deterministic function
+* Depends on a ‘key’ field (i.e. on the field the intermediate data is sorted) or on a subset of the ‘key’ fields - True
+* Can be implemented in any programming language
+* Standard ‘KeyFieldBasedPartitioner’ has similar options to the Unix ‘sort’ utility - True
+4) Select the correct statements about a comparator:
+* Can be implemented in any programming language
+* Standard ‘KeyFieldBasedComparator’ has similar options to the Unix ‘sort’ utility - True
+* It can significantly speed up the MapReduce job
+5) In what cases should speculative execution (of mapper, for example) be turned off?
+* If the mapper is a non-deterministic function
+* If the mapper has a side-effect - True ((it updates a database, requests an outer service), speculative execution should be turned off to avoid double work)
+6) Select the facts about a speculative execution:
+* It allows to run several instances of all the tasks of the job
+* It can speed up the MapReduce job - True
+* Can be the reason of a KILLED tasks status - True (tasks (or more precisely, attempts) which were successful on one node were killed on the others)
+* It is turned off by default
+7) Select the facts about a compression:
+* Bzip2 format is splittable, i.e. one bzip2 archive can be processed by several mappers in parallel - True
+* A compression can be specified both for intermediate and for output data - True
+* A compression is a trade-off between CPU utilization, disk usage and ability of archives to be splitted by Hadoop - True
+* A compression is a trade-off between CPU utilization and disk usage 
+
+8.1) Select a phase in MapReduce paradigm which processes input records sorted by key:
+* Map
+* Shuffle & sort
+* Reduce - True
+
+8.2) What phase in MapReduce paradigm is better for filtering input records without any additional processing?
+* Map
+* Shuffle & sort - False
+* Reduce
+9) What map and reduce functions should be used (in terms of Unix utilities) to select the only unique input records?
+* map=’cat’, reduce=’uniq’ - True ('uniq' on the sorted input records gives the required result)
+* map=’uniq’, reduce=’uniq’ - True ( 'uniq' on the Map phase in some cases reduces the amount of records, 'uniq' on the Reduce phase gets the sorted records and solves the task)
+* map=’cat’, reduce=’sort -u’
+* map=’sort -u’, reduce=’sort -u’
+* map=’uniq’, reduce=None
+10) What map and reduce functions should be used (in terms of Unix utilities) to select only the repeated input records?
+* map=’uniq’, reduce=None
+* map=’uniq’, reduce=’cat’
+* map=’uniq -d’, reduce=’uniq -d’
+* map=’cat’, reduce=’uniq -d’ - True (mappers pass all the records to reducers and then 'uniq -d' on the sorted records solves the task)
+
+11.1) In Hadoop Streaming a reducer is run on:
+* Stream of the input records - True
+* Each input record
+* On records with the same key
+
+11.2) What do you need to define for processing data with Hadoop Streaming on the Reduce phase:
+* Input records reader
+* Input records format - True
+* Aggregation records by key - True
+* Processor of values with the same key - True
+* Output records format - True
+* Output records writer
+12) What phase of MapReduce is more suitable for this code?
+```
+#!/usr/bin/env python
+import sys
+import random
+random.seed(100)
+probability = float(sys.argv[1])
+for line in sys.stdin:
+    if random.random() <= probability:
+        print line.strip()
+```
+* Map - True
+* Reduce
+
+13.1) How can the Reduce phase in Hadoop Streaming be omitted?
+* Don't specify a '-reducer' parameter
+* Set number of reducers to 0 - True
+* Use a trivial reducer, i.e. cat utility
+
+13.2) What is the Distributed Cache in Hadoop used for?
+* To cache frequently used data on the nodes
+* To deliver the required files to the nodes - True
