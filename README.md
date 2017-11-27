@@ -13,4 +13,4 @@ To see docker images:
 
 Starting the docker image:
 
-`docker run -p 8888:8888 bigdatateam/yarn-notebook`
+`docker run -it --rm -p 8888:8888 bigdatateam/yarn-notebook`
