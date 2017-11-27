@@ -77,11 +77,11 @@
 
 #### Example: a (binary) data file in HDFS
 
-![sc_core_1](/Images/1_Big_Data_Essentials/Week_2/sc_core_1.png)
+![sc_core_1](/Images/1_Big_Data_Essentials/Week_4/sc_core_1.png)
 
 #### Example: an sliced in-memory array
 
-![sc_core_2](/Images/1_Big_Data_Essentials/Week_2/sc_core_2.png)
+![sc_core_2](/Images/1_Big_Data_Essentials/Week_4/sc_core_2.png)
 
 #### Quiz
 
