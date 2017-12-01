@@ -67,9 +67,9 @@
 * Formally, a read-only, partitioned collection of records
 
 * To adhere to RDD[T] interface, a dataset must implement:
-    * partitions()  Array[Partition] (The dataset, must be able to enumerate its partitions by implementing the partition's function.)
-    * iterator(p: Partition, parents: Array[Iterator[_]])  Iterator[T] (It is passed back to the iterator function of the RDD, when the framework needs to read the data from the partition.)
-    * dependencies()  Array[Dependency] (The dataset must be able to enumerate its dependencies and provide an array of dependency objects.)
+    * partitions() &rarr; Array[Partition] (The dataset, must be able to enumerate its partitions by implementing the partition's function.)
+    * iterator(p: Partition, parents: Array[Iterator[_]]) &rarr; Iterator[T] (It is passed back to the iterator function of the RDD, when the framework needs to read the data from the partition.)
+    * dependencies() &rarr; Array[Dependency] (The dataset must be able to enumerate its dependencies and provide an array of dependency objects.)
     * Summary: The dependency object maps partitions of the dataset to the dependencies that are partitions of the parent dataset. Those parent partitions are injected into the iterator call when creating a reader. 
 * …and may implement other helper functions
 
