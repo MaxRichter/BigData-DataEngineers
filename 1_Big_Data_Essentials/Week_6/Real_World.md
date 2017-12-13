@@ -33,7 +33,7 @@
 * We can start with taking the head of the file:
 `head yellow_tripdata_2016-12.csv`
 
-![sampling_1](/Images/1_Big_Data_Essentials/Week_4/sampling_1.png)
+![sampling_1](/Images/1_Big_Data_Essentials/Week_6/sampling_1.png)
 
 * We could not just take head of file - trips are sorted by pick-up time
 
@@ -42,7 +42,7 @@
 * We need to shuffle the rows:
 `cat yellow_tripdata_2016-12.csv | gshuf -n 10`
 
-![sampling_2](/Images/1_Big_Data_Essentials/Week_4/sampling_2.png)
+![sampling_2](/Images/1_Big_Data_Essentials/Week_6/sampling_2.png)
 
 * It's shuf in ubuntu or gshuf from coreutils on Mac OS
 
@@ -60,7 +60,7 @@ And append all of that to the sample100.csv.
 
 `tail -n +2 yellow_tripdata_2016-12.csv | gshuf -n 100 | sed 's/''//g' >> sample100.csv`
 
-![sampling_3](/Images/1_Big_Data_Essentials/Week_4/sampling_3.png)
+![sampling_3](/Images/1_Big_Data_Essentials/Week_6/sampling_3.png)
 
 ### Estimating proportions
 
