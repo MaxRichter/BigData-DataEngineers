@@ -721,3 +721,156 @@ if current_value is not None:
    * **Reduce** (Yes, it is a reducer which removes all the records with tag=0, for other tags it implements min() function.)
 10) What file is in the output directory of the succeeded MapReduce job (input the exact filename)?
     * **_SUCCESS** (Yes, a hidden (started with underscore) success file)
+    
+## Working with social graphs
+
+Graphs and networks are extremely popular topics nowadays because they are everywhere. 
+A social network is probably the most obvious example. 
+
+A web-link graph, a paper citation graph, a co-purchasing network, these are other examples of large graphs that are in use today. 
+Throughout this lesson, I'm going to use the Twitter graph as a data set. 
+Precisely, the social graph made public by Kwak et al in 2010 as a complimentary material for their paper. 
+
+![social_1](/Images/1_Big_Data_Essentials/Week_6/social_1.png)
+
+#### Social Graph
+
+What is the social graph? 
+Vertexes correspond to users and edges is followed by relation. 
+
+That is an edge from user A to user B represents and is followed by relation. 
+In other words, 
+
+![social_2](/Images/1_Big_Data_Essentials/Week_6/social_2.png)
+
+The data set is provided in text form where every line encodes an edge in the format USER \t FOLLOWER. 
+Note that the graph is not symmetric. 
+
+If user B follows user A, user A may not follow user B. 
+Here, you can see all edges incident to vertex 4825, and only the pair 2790 and 4825 is bilateral.
+
+![social_3](/Images/1_Big_Data_Essentials/Week_6/social_3.png)
+
+![social_4](/Images/1_Big_Data_Essentials/Week_6/social_4.png)
+
+#### pyspark
+
+Find the user with the largest number of followers.
+
+![social_5](/Images/1_Big_Data_Essentials/Week_6/social_5.png)
+
+You can combine the mapValues transformation together with the reduceByKey transformation and invoke the top action. 
+Whoa, the most popular users have up to three million followers. 
+
+Let me show you how to tidy up the code a bit. 
+The only reason why you need the mapValues transformation is that you need to explicitly introduce values to aggregate for the reduceByKey transformation. 
+
+In Spark, there is a generic transformation called aggregateByKey that allows you to use custom aggregation rules. 
+It is parametrized by zero value, a value combiner that updates the aggregate given the next value, and the combiner that merges two aggregates. 
+
+Here, I am incrementing the count by one on every value and add to aggregates upon the merge. 
+Personally, I find this code cleaner with obvious intentions. 
+
+![social_6](/Images/1_Big_Data_Essentials/Week_6/social_6.png)
+
+One more thing, the range of follower count is extremely large. 
+There are users with one follower and there are users with more than a million followers. 
+This is another example of a data skew, the term you have learned from Alexey. 
+
+If you invoke the groupBy transformation, you will run into trouble. 
+The partitions will be completely skewed with the largest group requiring the most of work. 
+The reason why we avoided this issue in the video is because the aggregateByKey transformation partially aggregates values on the map side, thus avoided large groups.
+
+This is possible because the aggregate in operation is assumed to be associative and commutative. 
+
+#### Summary
+* How to load data from HDFS
+* How to use the 'aggregateByKey' transform
+* That social graphs exhibit extreme skewness
+
+### Shortest path
+
+![social_7](/Images/1_Big_Data_Essentials/Week_6/social_7.png)
+
+Let's compute for the given user X, the distance to every other user in the graph. 
+To do so, we will run a breadth-first search from the vertex X. 
+
+Precisely, we start with annotating the vertex X with distance zero. 
+Then, we find all neighbors of X and annotate them with distance one. 
+
+On the next iteration, we start with nearly annotated vertices and repeat the process. 
+When we have different distances at the vertex, we take the minimum because we are interested in the shortest path. 
+
+We terminate the algorithm when the distances are not changing any more. 
+As the distance increases with every new iteration, it is equivalent to stop when there are no unvisited vertices.
+
+![social_8](/Images/1_Big_Data_Essentials/Week_6/social_8.png)
+
+#### pyspark
+
+![social_9](/Images/1_Big_Data_Essentials/Week_6/social_9.png)
+
+The idea is to have a mapping from a vertex to its neighbors. 
+Note that in this slide you have a mapping from a vertex to its followers, so you need to make a reverse mapping, let's call it forward_edges. 
+
+To bootstrap the algorithm, let's create an initial distance mapping. 
+For example, let's start with vertex 12. 
+
+Now, you need to find neighbors of the vertex and update their distances. 
+You join the distance mapping with the forward_edges, and what will be the result? 
+
+On the left side, there is a pair of vertex 12 and distance 0. 
+On the right side, there is a pair of vertex 12 and vertex 13, the neighbor vertex. 
+
+So the joint tuple will be vertex 12, distance 0, and vertex 13. 
+Now, we need to perform a step to devise that vertex 13 is at a distance of 1. 
+
+Is it the final distance? 
+Well, during the first iteration, yes, but generally speaking, no. 
+Recall, you may have visited the vertex already. 
+
+Now, how to account for that. 
+You need to check if the distance was computed already or not. 
+
+![social_10](/Images/1_Big_Data_Essentials/Week_6/social_10.png)
+
+So, once again, you need to join two datasets as shown in this slide. 
+Congratulations, you have done one iteration of the algorithm. 
+
+Now, you need to make a loop. 
+Before continuing, let's study up the code and fold these helper functions for brevity, that's it.
+
+![social_11](/Images/1_Big_Data_Essentials/Week_6/social_11.png)
+
+Now, let's think about the termination criteria. 
+How can you check that you have visited all reachable vertices? 
+
+For example, you can check if you have reached any new vertices on the current iteration. 
+Their distance in this case will be equal to the iteration number. 
+
+You need to create a loop, move the iteration step inside the loop and count the number of new vertices. 
+Then, if there are no new vertices, you need to break the loop. 
+Otherwise, prepare for the next iteration by updating the search frontier. 
+
+If you run this code, you will notice that the iteration time becomes longer and longer.
+Do you understand why?
+
+![social_12](/Images/1_Big_Data_Essentials/Week_6/social_12.png)
+
+There are two reasons.
+First, Spark discards intermediate data after the computation. 
+We can hint it to persist distances to avoid recomputing them from scratch, from the source vertex on every iteration. 
+
+![social_13](/Images/1_Big_Data_Essentials/Week_6/social_13.png)
+
+Second, if you look at the Spark UI, you will see that Spark reshuffles the data over and over again because it knows nothing about the key distribution of data. 
+We can hint how to partition the data thus avoiding reshuffles. 
+This optimization technique is covered in more detail in the next course of the specialization.
+
+![social_14](/Images/1_Big_Data_Essentials/Week_6/social_14.png)
+
+#### Summary
+* write iterative algorithms in Spark
+* tune persistence and partitioning
+* implement a simple BFS graph algorithm
+
